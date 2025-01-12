@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/caarlos0/env"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -18,13 +20,18 @@ const (
 )
 
 type Config struct {
-	Host     string `env:"RUN_ADDRESS"`
-	Database string `env:"DATABASE_URI"`
-	Accrual  string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	Host        string `env:"RUN_ADDRESS"`
+	Database    string `env:"DATABASE_URI"`
+	Accrual     string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	TokenSecret string `env:"TOKEN_SECRET"`
 }
 
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
+
+	if err := godotenv.Load(".env"); err != nil {
+		return nil, errors.New(".env not found")
+	}
 
 	cl := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 

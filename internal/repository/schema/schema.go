@@ -38,4 +38,6 @@ const (
 		ALTER TABLE Orders ADD CONSTRAINT Orders_fk0 FOREIGN KEY (user_id) REFERENCES Users(id);
 		ALTER TABLE Accounts ADD CONSTRAINT Accounts_fk1 FOREIGN KEY (user_id) REFERENCES Users(id);
 	`
+
+	SelectUser = `SELECT login, password FROM users WHERE login = @login`
 )
