@@ -29,19 +29,23 @@ func NewRouter(deps api.Dependencies) *chi.Mux {
 	})
 
 	r.Route("/api/user/orders", func(r chi.Router) {
-		r.Post("/", orders.AddOrders)
+		r.Use(auth.Validate)
+		r.Post("/", orders.AddOrder)
 		r.Get("/", orders.GetOrders)
 	})
 
 	r.Route("/api/user/balance", func(r chi.Router) {
+		r.Use(auth.Validate)
 		r.Get("/", balance.GetBalance)
 	})
 
 	r.Route("/api/user/withdraw", func(r chi.Router) {
+		r.Use(auth.Validate)
 		r.Post("/", balance.Withdraw)
 	})
 
 	r.Route("/api/user/withdrawals", func(r chi.Router) {
+		r.Use(auth.Validate)
 		r.Get("/", balance.Withdrawals)
 	})
 

@@ -12,14 +12,14 @@ build-all: clean gophermart run-autotests
 autotests: run-autotests
 
 gophermart:
-	go build -o ./bin/gophermart ./cmd/gophermart/main.go
+	go build -o ./cmd/gophermart/gophermart ./cmd/gophermart/main.go
 
 test:
 	go test ./... -race -coverprofile=cover.out -covermode=atomic
 
 .PHONY : clean
 clean:
-	-rm ./bin/gophermart 2>/dev/null
+	-rm ./cmd/gophermart/gophermart 2>/dev/null
 	-rm ./cover.out 2>/dev/null
 	-rm ./backup.dat 2>dev/null
 
@@ -39,19 +39,18 @@ RUN_ADDRESS := 8080
 
 .PHONY : run-autotestsg
 # run-autotests: iter13
-run-autotests: all_test race-condition
+run-autotests: all_test
 
 
 .PHONY : all_test
 all_test:
-	 metricstest -test.run=^TestIteration14$$ \
-			-agent-binary-path=./bin/agent \
-			-binary-path=./bin/gophermart \
-			-database-dsn='postgres://metriq:password@localhost:5432/metriq?sslmode=disable' \
-			 -key="${TEMP_FILE}" \
-			-gophermart-port=$(gophermart_PORT) \
-			-source-path=.
-
-.PHONY : race-condition
-race-condition:
-	go test -v -race ./...
+	 gophermarttest \
+            -test.v -test.run=^TestGophermart$$ \
+            -gophermart-binary-path=cmd/gophermart/gophermart \
+            -gophermart-host=localhost \
+            -gophermart-port=8080 \
+            -gophermart-database-uri="postgres://gratify:password@localhost:5432/gratify?sslmode=disable" \
+            -accrual-binary-path=cmd/accrual/accrual_linux_amd64 \
+            -accrual-host=localhost \
+            -accrual-port=8082 \
+            -accrual-database-uri="postgresql://postgres:postgres@postgres/praktikum?sslmode=disable"

@@ -32,7 +32,7 @@ func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repositor
 		l:  l,
 	}
 
-	// создаем таблицу, при ошибке прокидываем ее наверх
+	// // создаем таблицу, при ошибке прокидываем ее наверх
 	// err = r.createTables(ctx)
 	// if err != nil {
 	// 	return nil, err
@@ -62,9 +62,11 @@ func (r Repository) CheckLogin(ctx context.Context, userLogin models.LoginReques
 
 	row := r.db.QueryRow(ctx, schema.SelectUser, pgx.NamedArgs{"login": userLogin.Login})
 
-	err := row.Scan(&user.Login, &user.Password)
+	err := row.Scan(&user.ID, &user.Login, &user.Password)
 	if err != nil {
-		return err
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
 	}
 
 	savedHash, err := hex.DecodeString(user.Password)
@@ -83,39 +85,79 @@ func (r Repository) CheckLogin(ctx context.Context, userLogin models.LoginReques
 	return nil
 }
 
-func (r Repository) RegisterUser(ctx context.Context, userLogin models.LoginRequest) error {
-	var user models.LoginRequest
-	row := r.db.QueryRow(ctx, schema.SelectUser, pgx.NamedArgs{"login": userLogin.Login})
-
-	err := row.Scan(&user.Login, &user.Password)
-
-	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-	}
-
-	if len(user.Login) > 0 {
-		return apperr.ErrLoginAlreadyTaken
-	}
-
+func (r Repository) RegisterUser(ctx context.Context, userLogin models.LoginRequest) (int32, error) {
 	h := sha256.New()
 	h.Write([]byte([]byte(userLogin.Password)))
 	hash := hex.EncodeToString(h.Sum(nil))
 
-	res, err := r.db.Exec(ctx, "INSERT INTO users (login, password) VALUES (@login, @password)",
-		pgx.NamedArgs{
-			"login":    userLogin.Login,
-			"password": hash,
-		})
+	var id int32
+
+	err := r.db.QueryRow(ctx, schema.InsertUser, pgx.NamedArgs{
+		"login":    userLogin.Login,
+		"password": hash,
+	}).Scan(&id)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return id, nil
+}
+
+func (r Repository) AddOrder(ctx context.Context, order models.Order) error {
+	rows, err := r.db.Query(ctx, schema.SelectOrderFromAnotherUser, pgx.NamedArgs{
+		"id":      order.Number,
+		"user_id": order.UserID,
+	})
+	if err != nil {
+		return err
+	}
+	rows.Close()
+
+	if rows.CommandTag().RowsAffected() > 0 {
+		return apperr.ErrOrderAlreadyUploadedAnotherUser
+	}
+
+	_, err = r.db.Exec(ctx, schema.InsertOrder, pgx.NamedArgs{
+		"id":      order.Number,
+		"user_id": order.UserID,
+		"status":  order.Status,
+		"date":    order.Date,
+	})
 	if err != nil {
 		return err
 	}
 
-	rows := res.RowsAffected()
-	if rows == 0 {
-		return apperr.ErrZeroRowInsert
+	return nil
+}
+
+func (r Repository) GetOrders(ctx context.Context, userId int32) ([]models.Order, error) {
+	orders := []models.Order{}
+
+	rows, err := r.db.Query(ctx, schema.SelectOrders, pgx.NamedArgs{
+		"user_id": userId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		order := models.Order{}
+
+		err := rows.Scan(
+			&order.Number,
+			&order.UserID,
+			&order.Status,
+			&order.Accrual,
+			&order.Sum,
+			&order.Date,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
 	}
 
-	return nil
+	return orders, nil
 }

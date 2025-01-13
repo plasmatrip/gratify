@@ -36,27 +36,14 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := a.MakeLoginToken(lr)
+	token, err := a.LoginToken(lr)
 	if err != nil {
 		a.deps.Logger.Sugar.Infow("error generating JWT", "error: ", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// jsonToken, err := json.Marshal(models.LoginResponse{AccessToken: token})
-	// if err != nil {
-	// 	a.deps.Logger.Sugar.Infow("json marshalling error", "error: ", err)
-	// 	http.Error(w, "internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Authorization", "Bearer "+token)
-	// _, err = w.Write(jsonToken)
-	// if err != nil {
-	// 	a.deps.Logger.Sugar.Infow("error writing HTTP response", "error: ", err)
-	// 	http.Error(w, "internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
+	w.WriteHeader(http.StatusOK)
 }

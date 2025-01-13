@@ -5,8 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/plasmatrip/gratify/internal/apperr"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/plasmatrip/gratify/internal/models"
+	"github.com/rgurov/pgerrors"
 )
 
 func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
@@ -24,17 +25,14 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.deps.Repo.RegisterUser(r.Context(), lr); err != nil {
-		if errors.Is(err, apperr.ErrLoginAlreadyTaken) {
-			a.deps.Logger.Sugar.Infow("authentication error", "error: ", err)
-			http.Error(w, "authentication error", http.StatusConflict)
-			return
-		}
-
-		if errors.Is(err, apperr.ErrZeroRowInsert) {
-			a.deps.Logger.Sugar.Infow("internal server error", "error: ", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
+	id, err := a.deps.Repo.RegisterUser(r.Context(), lr)
+	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == pgerrors.UniqueViolation {
+				a.deps.Logger.Sugar.Infow("authentication error", "error: ", err)
+				http.Error(w, "authentication error", http.StatusConflict)
+				return
+			}
 		}
 
 		a.deps.Logger.Sugar.Infow("internal error", "error: ", err)
@@ -42,27 +40,16 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := a.MakeLoginToken(lr)
+	lr.ID = id
+
+	token, err := a.LoginToken(lr)
 	if err != nil {
 		a.deps.Logger.Sugar.Infow("error generating JWT", "error: ", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// jsonToken, err := json.Marshal(models.LoginResponse{AccessToken: token})
-	// if err != nil {
-	// 	a.deps.Logger.Sugar.Infow("json marshalling error", "error: ", err)
-	// 	http.Error(w, "internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Authorization", "Bearer "+token)
-	// _, err = w.Write(jsonToken)
-	// if err != nil {
-	// 	a.deps.Logger.Sugar.Infow("error writing HTTP response", "error: ", err)
-	// 	http.Error(w, "internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
+	w.WriteHeader(http.StatusOK)
 }

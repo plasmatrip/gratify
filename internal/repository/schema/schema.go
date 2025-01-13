@@ -12,10 +12,13 @@ const (
 		CREATE INDEX IF NOT EXISTS users_id ON users (id);
 		CREATE INDEX IF NOT EXISTS users_login ON users (login);
 
+		CREATE TYPE order_status AS ENUM
+    		('NEW', 'REGISTERED', 'PROCESSING', 'PROCESSED' ,'INVALID');
+
 		CREATE TABLE IF NOT EXISTS orders (
 			id bigint NOT NULL UNIQUE,
-			user_id serial NOT NULL UNIQUE,
-			status varchar(10) NOT NULL,
+			user_id serial NOT NULL,
+			status order_status NOT NULL DEFAULT 'NEW'::order_status,
 			accrual numeric(10,0) NOT NULL DEFAULT '0',
 			sum numeric(10,0) NOT NULL DEFAULT '0',
 			date timestamp with time zone NOT NULL,
@@ -39,5 +42,17 @@ const (
 		ALTER TABLE Accounts ADD CONSTRAINT Accounts_fk1 FOREIGN KEY (user_id) REFERENCES Users(id);
 	`
 
-	SelectUser = `SELECT login, password FROM users WHERE login = @login`
+	SelectUser = `SELECT * FROM users WHERE login = @login;`
+
+	InsertUser = `INSERT INTO users (login, password) VALUES (@login, @password) RETURNING id;`
+
+	SelectOrders = `
+		SELECT * FROM orders
+	 	WHERE user_id = @user_id AND sum = 0 AND status IN ('NEW', 'PROCESSING', 'PROCESSED' ,'INVALID')
+		ORDER BY date DESC;
+	`
+
+	InsertOrder = `INSERT INTO orders (id, user_id, status, date) VALUES (@id, @user_id, @status, @date);`
+
+	SelectOrderFromAnotherUser = `SELECT * FROM orders WHERE id = @id AND user_id <> @user_id;`
 )
