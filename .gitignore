@@ -22,4 +22,3 @@ vendor/
 .idea
 .vscode
 gratify-1736448595.sql
-cmd/gophermart/.env
