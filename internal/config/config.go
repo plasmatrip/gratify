@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -30,12 +29,13 @@ type Config struct {
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
 
-	ex, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
+	// ex, err := os.Executable()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if err := godotenv.Load(filepath.Dir(ex) + "/.env"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
+		// if err := godotenv.Load(filepath.Dir(ex) + "/.env"); err != nil {
 		return nil, errors.New(".env not found")
 	}
 
