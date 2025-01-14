@@ -24,7 +24,7 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.deps.Repo.CheckLogin(r.Context(), lr); err != nil {
+	if err := a.deps.Repo.CheckLogin(r.Context(), &lr); err != nil {
 		if errors.Is(err, apperr.ErrBadLogin) {
 			a.deps.Logger.Sugar.Infow("authentication error", "error: ", err)
 			http.Error(w, "authentication error", http.StatusUnauthorized)

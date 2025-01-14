@@ -39,7 +39,7 @@ func NewRouter(deps api.Dependencies) *chi.Mux {
 		r.Get("/", balance.GetBalance)
 	})
 
-	r.Route("/api/user/withdraw", func(r chi.Router) {
+	r.Route("/api/user/balance/withdraw", func(r chi.Router) {
 		r.Use(auth.Validate)
 		r.Post("/", balance.Withdraw)
 	})

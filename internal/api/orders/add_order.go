@@ -28,29 +28,29 @@ func (o *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Преобразуем тело запроса в строку и обрезаем лишние пробелы
-	bodyStr := string(body)
-	bodyStr = strings.TrimSpace(bodyStr)
+	orderIDStr := string(body)
+	orderIDStr = strings.TrimSpace(orderIDStr)
 
-	err = goluhn.Validate(bodyStr)
+	err = goluhn.Validate(orderIDStr)
 	if err != nil {
-		o.deps.Logger.Sugar.Infow("Invalid order number format", "error: ", err)
-		http.Error(w, "Invalid order number format", http.StatusUnprocessableEntity)
+		o.deps.Logger.Sugar.Infow("invalid order number format", "error: ", err)
+		http.Error(w, "invalid order number format", http.StatusUnprocessableEntity)
 		return
 	}
 
 	// Преобразуем строку в число
-	orderID, err := strconv.ParseInt(bodyStr, 10, 64) // 64-битное целое число
+	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
 	if err != nil {
 		o.deps.Logger.Sugar.Infow("invalid order ID format", "error: ", err)
 		http.Error(w, "invalid order ID format", http.StatusBadRequest)
 		return
 	}
 
-	userId := r.Context().Value(auth.ValidLogin{}).(*auth.Claims).UserdID
+	userID := r.Context().Value(auth.ValidLogin{}).(*auth.Claims).UserdID
 
 	order := models.Order{
 		Number: orderID,
-		UserID: userId,
+		UserID: userID,
 		Status: models.StatusNew,
 		Date:   time.Now(),
 	}
@@ -79,6 +79,8 @@ func (o *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error adding order", http.StatusInternalServerError)
 		return
 	}
+
+	o.deps.Controller.AddWork(order)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)

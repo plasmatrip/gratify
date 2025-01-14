@@ -20,16 +20,22 @@ type Order struct {
 	Number  int64     `json:"number"`
 	UserID  int32     `json:"-"`
 	Status  Status    `json:"status"`
-	Accrual int       `json:"accrual,omitempty"`
-	Sum     int       `json:"-"`
+	Accrual float32   `json:"accrual,omitempty"`
+	Sum     float32   `json:"-"`
 	Date    time.Time `json:"uploaded_at"`
 }
 
 type ResponseOrder struct {
-	Number  int64  `json:"number"`
-	Status  string `json:"status"`
-	Accrual int    `json:"accrual,omitempty"`
-	Date    string `json:"uploaded_at"`
+	Number  string  `json:"number"`
+	Status  string  `json:"status"`
+	Accrual float32 `json:"accrual,omitempty"`
+	Date    string  `json:"uploaded_at"`
+}
+
+type AccrualResponse struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float32 `accrual:"accrual"`
 }
 
 // deserialize from DB

@@ -8,6 +8,7 @@ import (
 
 	"github.com/plasmatrip/gratify/internal/api"
 	"github.com/plasmatrip/gratify/internal/config"
+	"github.com/plasmatrip/gratify/internal/controller"
 	"github.com/plasmatrip/gratify/internal/logger"
 	"github.com/plasmatrip/gratify/internal/repository"
 	"github.com/plasmatrip/gratify/internal/router"
@@ -35,10 +36,14 @@ func main() {
 	}
 	defer db.Close()
 
+	ctrl := controller.NewConntroller(c.ClientTimeout, *c, *l, *db)
+	ctrl.StartWorkers(ctx)
+
 	deps := &api.Dependencies{
-		Config: *c,
-		Logger: *l,
-		Repo:   *db,
+		Config:     *c,
+		Logger:     *l,
+		Repo:       *db,
+		Controller: *ctrl,
 	}
 
 	server := http.Server{

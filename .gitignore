@@ -22,3 +22,8 @@ vendor/
 .idea
 .vscode
 gratify-1736448595.sql
+
+.golangci-lint
+golangci-lint/report-unformatted.json
+golangci.yml
+cover.html

@@ -8,34 +8,41 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env"
 	"github.com/joho/godotenv"
 )
 
 const (
-	port     = "8080"
-	host     = "localhost"
-	accrual  = ""
-	database = "postgres://gratify:password@localhost:5432/gratify?sslmode=disable"
+	port          = "8080"
+	host          = "localhost"
+	accrual       = "http://localhost:8081"
+	database      = "postgres://gratify:password@localhost:5432/gratify?sslmode=disable"
+	clientTimeout = time.Second * 5
+	workers       = 5
 )
 
 type Config struct {
-	Host        string `env:"RUN_ADDRESS"`
-	Database    string `env:"DATABASE_URI"`
-	Accrual     string `env:"ACCRUAL_SYSTEM_ADDRESS"`
-	TokenSecret string `env:"TOKEN_SECRET"`
+	Host          string `env:"RUN_ADDRESS"`
+	Database      string `env:"DATABASE_URI"`
+	Accrual       string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	TokenSecret   string `env:"TOKEN_SECRET"`
+	ClientTimeout time.Duration
+	Workers       int
 }
 
 func NewConfig() (*Config, error) {
-	cfg := &Config{}
+	cfg := &Config{
+		ClientTimeout: clientTimeout,
+		Workers:       workers,
+	}
 
 	ex, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
 
-	// if err := godotenv.Load(".env"); err != nil {
 	if err := godotenv.Load(filepath.Dir(ex) + "/.env"); err != nil {
 		return nil, errors.New(".env not found")
 	}

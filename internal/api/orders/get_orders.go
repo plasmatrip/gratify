@@ -3,6 +3,7 @@ package orders
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/plasmatrip/gratify/internal/api/auth"
@@ -10,32 +11,32 @@ import (
 )
 
 func (o *Orders) GetOrders(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(auth.ValidLogin{}).(*auth.Claims).UserdID
+	userID := r.Context().Value(auth.ValidLogin{}).(*auth.Claims).UserdID
 
-	orders, err := o.deps.Repo.GetOrders(r.Context(), userId)
+	foundOrders, err := o.deps.Repo.GetOrders(r.Context(), userID)
 	if err != nil {
 		o.deps.Logger.Sugar.Infow("internal server error", "error: ", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if len(orders) == 0 {
+	if len(foundOrders) == 0 {
 		o.deps.Logger.Sugar.Infow("no data", "error: ", err)
 		http.Error(w, "no data", http.StatusNoContent)
 		return
 	}
 
-	prepareOrder := make([]models.ResponseOrder, len(orders))
-	for i, order := range orders {
-		prepareOrder[i] = models.ResponseOrder{
-			Number:  order.Number,
+	orders := make([]models.ResponseOrder, len(foundOrders))
+	for i, order := range foundOrders {
+		orders[i] = models.ResponseOrder{
+			Number:  strconv.Itoa(int(order.Number)),
 			Status:  order.Status.String(),
 			Accrual: order.Accrual,
 			Date:    order.Date.Format(time.RFC3339),
 		}
 	}
 
-	foundOrders, err := json.Marshal(prepareOrder)
+	preparedOrders, err := json.Marshal(orders)
 	if err != nil {
 		o.deps.Logger.Sugar.Infow("serialization error", "error: ", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -43,8 +44,8 @@ func (o *Orders) GetOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(foundOrders)
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(preparedOrders)
 	if err != nil {
 		o.deps.Logger.Sugar.Infow("data write error", "error: ", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

@@ -31,9 +31,9 @@ fmt:
 	go fmt ./...
 	goimports -v -w .
 
-# .PHONY : lint
-# lint:
-# 	golangci-lint run ./...
+.PHONY : lint
+lint:
+	golangci-lint run ./...
 
 RUN_ADDRESS := 8080
 
