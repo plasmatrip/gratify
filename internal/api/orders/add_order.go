@@ -17,7 +17,6 @@ import (
 )
 
 func (o *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
-	// var order = models.Order{}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

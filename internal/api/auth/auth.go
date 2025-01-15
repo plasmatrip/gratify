@@ -34,10 +34,6 @@ func (a *Auth) LoginToken(lr models.LoginRequest) (string, error) {
 		},
 		UserdID: lr.ID,
 	}
-	// claims := jwt.MapClaims{
-	// 	"sub": lr.Login,
-	// 	"exp": time.Now().Add(time.Hour * 72).Unix(),
-	// }
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 

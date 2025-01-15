@@ -41,7 +41,7 @@ func NewConntroller(timeout time.Duration, cfg config.Config, log logger.Logger,
 
 func (c Controler) StartWorkers(ctx context.Context) {
 	for i := 1; i < c.cfg.Workers; i++ {
-		go c.Worker(ctx, i)
+		go c.Worker(ctx)
 	}
 
 	go func() {
@@ -65,19 +65,16 @@ func (c Controler) StartWorkers(ctx context.Context) {
 
 }
 
-func (c Controler) Worker(ctx context.Context, idx int) {
+func (c Controler) Worker(ctx context.Context) {
 	select {
 	case work := <-c.works:
-		// fmt.Printf("worker %d start\n", idx)
 		order, err := c.AccrualProcess(work)
 		result := Result{
 			order: order,
 			err:   err,
 		}
 		c.results <- result
-		// fmt.Printf("worker %d end\n", idx)
 	case <-ctx.Done():
-		// fmt.Printf("worker %d stop\n", idx)
 		return
 	}
 }
