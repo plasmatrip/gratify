@@ -1,8 +1,6 @@
 module github.com/plasmatrip/gratify
 
-go 1.23
-
-toolchain go1.23.0
+go 1.23.4
 
 require (
 	github.com/ShiraazMoollatjie/goluhn v0.0.0-20211017190329-0d86158c056a
