@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/plasmatrip/gratify/internal/api"
 	"github.com/plasmatrip/gratify/internal/config"
 	"github.com/plasmatrip/gratify/internal/controller"
+	"github.com/plasmatrip/gratify/internal/deps"
 	"github.com/plasmatrip/gratify/internal/logger"
 	"github.com/plasmatrip/gratify/internal/repository"
 	"github.com/plasmatrip/gratify/internal/router"
@@ -36,15 +36,14 @@ func main() {
 	}
 	defer db.Close()
 
-	ctrl := controller.NewConntroller(c.ClientTimeout, *c, *l, *db)
-	ctrl.StartWorkers(ctx)
-
-	deps := &api.Dependencies{
-		Config:     *c,
-		Logger:     *l,
-		Repo:       *db,
-		Controller: *ctrl,
+	deps := &deps.Dependencies{
+		Config: *c,
+		Logger: *l,
+		Repo:   *db,
 	}
+
+	ctrl := controller.NewConntroller(c.ClientTimeout, *deps)
+	ctrl.StartWorkers(ctx)
 
 	server := http.Server{
 		Addr: c.Host,
@@ -52,7 +51,7 @@ func main() {
 			l.Sugar.Infow("The loyalty system \"Gophermart\" server is running. ", "Server address: ", c.Host)
 			l.Sugar.Infow("Server config", "DATABASE_URI", c.Database, "ACCRUAL_SYSTEM_ADDRESS", c.Accrual)
 			return next
-		}(router.NewRouter(*deps)),
+		}(router.NewRouter(*deps, ctrl)),
 	}
 
 	go server.ListenAndServe()

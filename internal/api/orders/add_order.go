@@ -79,7 +79,7 @@ func (o *Orders) AddOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o.deps.Controller.AddWork(order)
+	o.controller.AddWork(order)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)

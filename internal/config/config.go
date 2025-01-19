@@ -87,14 +87,19 @@ func NewConfig() (*Config, error) {
 }
 
 func parseAddress(cfg *Config) error {
-	args := strings.Split(cfg.Host, ":")
-	if len(args) == 2 {
-		if len(args[0]) == 0 || len(args[1]) == 0 {
+	var parts []string
+	_, addr, found := strings.Cut(cfg.Host, "://")
+	if found {
+		parts = strings.Split(addr, ":")
+	}
+
+	if len(parts) == 2 {
+		if len(parts[0]) == 0 || len(parts[1]) == 0 {
 			cfg.Host = host + ":" + port
 			return nil
 		}
 
-		_, err := strconv.ParseInt(args[1], 10, 64)
+		_, err := strconv.ParseInt(parts[1], 10, 64)
 		return err
 	}
 	cfg.Host = host + ":" + port

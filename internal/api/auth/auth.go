@@ -4,7 +4,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/plasmatrip/gratify/internal/api"
+
+	"github.com/plasmatrip/gratify/internal/deps"
 	"github.com/plasmatrip/gratify/internal/models"
 )
 
@@ -17,10 +18,10 @@ type Claims struct {
 }
 
 type Auth struct {
-	deps api.Dependencies
+	deps deps.Dependencies
 }
 
-func NewAuthService(desp api.Dependencies) *Auth {
+func NewAuthService(desp deps.Dependencies) *Auth {
 	return &Auth{
 		deps: desp,
 	}

@@ -1,12 +1,12 @@
 package info
 
-import "github.com/plasmatrip/gratify/internal/api"
+import "github.com/plasmatrip/gratify/internal/deps"
 
 type Info struct {
-	deps api.Dependencies
+	deps deps.Dependencies
 }
 
-func NewInfoService(deps api.Dependencies) *Info {
+func NewInfoService(deps deps.Dependencies) *Info {
 	return &Info{
 		deps: deps,
 	}

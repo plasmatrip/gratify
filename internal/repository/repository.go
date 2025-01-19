@@ -33,10 +33,10 @@ func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repositor
 	}
 
 	// создаем таблицу, при ошибке прокидываем ее наверх
-	err = r.createTables(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// err = r.createTables(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return r, nil
 }
@@ -243,6 +243,7 @@ func (r Repository) Withdrawals(ctx context.Context, userID int32) ([]models.Wit
 		return nil, err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		withdraw := models.Withdraw{}
 

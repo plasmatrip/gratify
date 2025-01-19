@@ -2,20 +2,21 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/plasmatrip/gratify/internal/api"
 	"github.com/plasmatrip/gratify/internal/api/auth"
 	"github.com/plasmatrip/gratify/internal/api/balance"
 	"github.com/plasmatrip/gratify/internal/api/info"
 	"github.com/plasmatrip/gratify/internal/api/orders"
+	"github.com/plasmatrip/gratify/internal/controller"
+	"github.com/plasmatrip/gratify/internal/deps"
 )
 
-func NewRouter(deps api.Dependencies) *chi.Mux {
+func NewRouter(deps deps.Dependencies, controller *controller.Controler) *chi.Mux {
 
 	r := chi.NewRouter()
 
 	auth := auth.NewAuthService(deps)
 	balance := balance.NewBalanceService(deps)
-	orders := orders.NewOrdersService(deps)
+	orders := orders.NewOrdersService(deps, controller)
 	info := info.NewInfoService(deps)
 
 	r.Use(deps.Logger.WithLogging)

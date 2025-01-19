@@ -1,15 +1,18 @@
 package orders
 
 import (
-	"github.com/plasmatrip/gratify/internal/api"
+	"github.com/plasmatrip/gratify/internal/controller"
+	"github.com/plasmatrip/gratify/internal/deps"
 )
 
 type Orders struct {
-	deps api.Dependencies
+	deps       deps.Dependencies
+	controller *controller.Controler
 }
 
-func NewOrdersService(deps api.Dependencies) *Orders {
+func NewOrdersService(deps deps.Dependencies, controller *controller.Controler) *Orders {
 	return &Orders{
-		deps: deps,
+		deps:       deps,
+		controller: controller,
 	}
 }

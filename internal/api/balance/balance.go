@@ -1,14 +1,12 @@
 package balance
 
-import (
-	"github.com/plasmatrip/gratify/internal/api"
-)
+import "github.com/plasmatrip/gratify/internal/deps"
 
 type Balance struct {
-	deps api.Dependencies
+	deps deps.Dependencies
 }
 
-func NewBalanceService(deps api.Dependencies) *Balance {
+func NewBalanceService(deps deps.Dependencies) *Balance {
 	return &Balance{
 		deps: deps,
 	}
