@@ -18,7 +18,7 @@ type Result struct {
 	err   error
 }
 
-type Controler struct {
+type Controller struct {
 	works   chan models.Order
 	results chan Result
 	client  http.Client
@@ -26,9 +26,9 @@ type Controler struct {
 	wg      sync.WaitGroup
 }
 
-func NewConntroller(timeout time.Duration, deps deps.Dependencies) *Controler {
-	return &Controler{
-		works:   make(chan models.Order),
+func NewController(timeout time.Duration, deps deps.Dependencies) *Controller {
+	return &Controller{
+		works:   make(chan models.Order, 5),
 		results: make(chan Result),
 		client:  http.Client{Timeout: deps.Config.ClientTimeout},
 		deps:    deps,
@@ -36,14 +36,12 @@ func NewConntroller(timeout time.Duration, deps deps.Dependencies) *Controler {
 	}
 }
 
-func (c *Controler) StartWorkers(ctx context.Context) {
+func (c *Controller) StartWorkers(ctx context.Context) {
 	for i := 0; i < c.deps.Config.Workers; i++ {
 		go c.Worker(ctx, i)
-
 	}
 
 	go func() {
-
 		for {
 			select {
 			case result := <-c.results:
@@ -60,11 +58,10 @@ func (c *Controler) StartWorkers(ctx context.Context) {
 				return
 			}
 		}
-
 	}()
 }
 
-func (c *Controler) Worker(ctx context.Context, idx int) {
+func (c *Controller) Worker(ctx context.Context, idx int) {
 	c.wg.Add(1)
 	defer c.wg.Done()
 	for {
@@ -72,26 +69,24 @@ func (c *Controler) Worker(ctx context.Context, idx int) {
 		case work := <-c.works:
 			c.deps.Logger.Sugar.Infow("start work", "worker", idx)
 			order, err := c.AccrualProcess(work)
-			result := Result{
+			c.results <- Result{
 				order: order,
 				err:   err,
 			}
-			c.results <- result
 			c.deps.Logger.Sugar.Infow("stop work", "worker", idx)
 		case <-ctx.Done():
 			c.deps.Logger.Sugar.Infow("done work", "worker", idx)
 			return
 		}
 	}
-
 }
 
-func (c *Controler) AddWork(order models.Order) {
+func (c *Controller) AddWork(order models.Order) {
 	c.deps.Logger.Sugar.Infoln("add work")
 	c.works <- order
 }
 
-func (c *Controler) AccrualProcess(order models.Order) (models.Order, error) {
+func (c *Controller) AccrualProcess(order models.Order) (models.Order, error) {
 	result := models.Order{}
 
 	req, err := http.NewRequest(http.MethodGet, c.deps.Config.Accrual+"/api/orders/"+strconv.FormatInt(order.Number, 10), nil)

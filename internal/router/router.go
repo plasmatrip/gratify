@@ -10,7 +10,7 @@ import (
 	"github.com/plasmatrip/gratify/internal/deps"
 )
 
-func NewRouter(deps deps.Dependencies, controller *controller.Controler) *chi.Mux {
+func NewRouter(deps deps.Dependencies, controller *controller.Controller) *chi.Mux {
 
 	r := chi.NewRouter()
 

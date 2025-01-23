@@ -42,7 +42,7 @@ func main() {
 		Repo:   *db,
 	}
 
-	ctrl := controller.NewConntroller(c.ClientTimeout, *deps)
+	ctrl := controller.NewController(c.ClientTimeout, *deps)
 	ctrl.StartWorkers(ctx)
 
 	server := http.Server{

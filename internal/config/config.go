@@ -91,6 +91,8 @@ func parseAddress(cfg *Config) error {
 	_, addr, found := strings.Cut(cfg.Host, "://")
 	if found {
 		parts = strings.Split(addr, ":")
+	} else {
+		parts = strings.Split(cfg.Host, ":")
 	}
 
 	if len(parts) == 2 {

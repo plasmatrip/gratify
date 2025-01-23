@@ -7,10 +7,10 @@ import (
 
 type Orders struct {
 	deps       deps.Dependencies
-	controller *controller.Controler
+	controller *controller.Controller
 }
 
-func NewOrdersService(deps deps.Dependencies, controller *controller.Controler) *Orders {
+func NewOrdersService(deps deps.Dependencies, controller *controller.Controller) *Orders {
 	return &Orders{
 		deps:       deps,
 		controller: controller,
