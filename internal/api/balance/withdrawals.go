@@ -17,6 +17,8 @@ func (b *Balance) Withdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	b.deps.Logger.Sugar.Infow("response received from db", "withdrawals", foundWithdrawals)
+
 	if len(foundWithdrawals) == 0 {
 		b.deps.Logger.Sugar.Infow("no data", "error: ", err)
 		http.Error(w, "no data", http.StatusNoContent)

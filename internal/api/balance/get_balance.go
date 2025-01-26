@@ -33,5 +33,5 @@ func (b *Balance) GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b.deps.Logger.Sugar.Infow("response", "balance", balance)
+	b.deps.Logger.Sugar.Infow("response received from db", "balance", balance)
 }

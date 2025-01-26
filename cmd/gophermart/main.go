@@ -6,10 +6,10 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/plasmatrip/gratify/internal/api/middleware/logger"
 	"github.com/plasmatrip/gratify/internal/config"
 	"github.com/plasmatrip/gratify/internal/controller"
 	"github.com/plasmatrip/gratify/internal/deps"
-	"github.com/plasmatrip/gratify/internal/logger"
 	"github.com/plasmatrip/gratify/internal/repository"
 	"github.com/plasmatrip/gratify/internal/router"
 )
@@ -44,6 +44,7 @@ func main() {
 
 	ctrl := controller.NewController(c.ClientTimeout, *deps)
 	ctrl.StartWorkers(ctx)
+	ctrl.StartOrdersProcessor(ctx)
 
 	server := http.Server{
 		Addr: c.Host,

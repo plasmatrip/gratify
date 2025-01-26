@@ -5,6 +5,7 @@ import (
 	"github.com/plasmatrip/gratify/internal/api/auth"
 	"github.com/plasmatrip/gratify/internal/api/balance"
 	"github.com/plasmatrip/gratify/internal/api/info"
+	"github.com/plasmatrip/gratify/internal/api/middleware/compress"
 	"github.com/plasmatrip/gratify/internal/api/orders"
 	"github.com/plasmatrip/gratify/internal/controller"
 	"github.com/plasmatrip/gratify/internal/deps"
@@ -16,10 +17,11 @@ func NewRouter(deps deps.Dependencies, controller *controller.Controller) *chi.M
 
 	auth := auth.NewAuthService(deps)
 	balance := balance.NewBalanceService(deps)
-	orders := orders.NewOrdersService(deps, controller)
+	orders := orders.NewOrdersService(deps)
 	info := info.NewInfoService(deps)
 
 	r.Use(deps.Logger.WithLogging)
+	r.Use(compress.WithCompressed)
 
 	r.Route("/api/user/register", func(r chi.Router) {
 		r.Post("/", auth.Register)
