@@ -4,13 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"embed"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/plasmatrip/gratify/internal/api/middleware/logger"
 	"github.com/plasmatrip/gratify/internal/apperr"
-	"github.com/plasmatrip/gratify/internal/logger"
 	"github.com/plasmatrip/gratify/internal/models"
 	"github.com/plasmatrip/gratify/internal/repository/schema"
 )
@@ -21,6 +26,18 @@ type Repository struct {
 }
 
 func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repository, error) {
+	// запускаем миграцию
+	err := StartMigration(dsn)
+	if err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return nil, err
+		} else {
+			l.Sugar.Infoln("the database exists, there is nothing to migrate")
+		}
+	} else {
+		l.Sugar.Infoln("database migration was successful")
+	}
+
 	// открываем БД
 	db, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -32,18 +49,26 @@ func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repositor
 		l:  l,
 	}
 
-	// создаем таблицу, при ошибке прокидываем ее наверх
-	err = r.createTables(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	return r, nil
 }
 
-func (r Repository) createTables(ctx context.Context) error {
-	_, err := r.db.Exec(ctx, schema.DBSchema)
+//go:embed migrations/*.sql
+var migrationsDir embed.FS
+
+func StartMigration(dsn string) error {
+	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
+		return fmt.Errorf("failed to return an iofs driver: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
+	if err != nil {
+		return fmt.Errorf("failed to get a new migrate instance: %w", err)
+	}
+	if err := m.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return fmt.Errorf("failed to apply migrations to the DB: %w", err)
+		}
 		return err
 	}
 	return nil
@@ -311,4 +336,33 @@ func (r Repository) UpdateOrder(ctx context.Context, order models.Order) error {
 	}
 
 	return nil
+}
+
+func (r Repository) GetUnprocessedOrders(ctx context.Context) ([]models.Order, error) {
+	orders := []models.Order{}
+
+	rows, err := r.db.Query(ctx, schema.SelectUnprocessedOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		order := models.Order{}
+
+		err := rows.Scan(
+			&order.Number,
+			&order.UserID,
+			&order.Status,
+			&order.Accrual,
+			&order.Sum,
+			&order.Date,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
 }

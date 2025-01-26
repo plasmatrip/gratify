@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/plasmatrip/gratify/internal/apperr"
 	"github.com/plasmatrip/gratify/internal/deps"
 	"github.com/plasmatrip/gratify/internal/models"
 )
@@ -18,32 +18,63 @@ type Result struct {
 	err   error
 }
 
-type Controler struct {
+type Controller struct {
 	works   chan models.Order
 	results chan Result
+	wait    chan struct{}
 	client  http.Client
 	deps    deps.Dependencies
 	wg      sync.WaitGroup
+	mu      sync.Mutex
+	cond    *sync.Cond
 }
 
-func NewConntroller(timeout time.Duration, deps deps.Dependencies) *Controler {
-	return &Controler{
-		works:   make(chan models.Order),
+func NewController(timeout time.Duration, deps deps.Dependencies) *Controller {
+	ctrl := &Controller{
+		works:   make(chan models.Order, deps.Config.WorkBuffer),
 		results: make(chan Result),
+		wait:    make(chan struct{}, deps.Config.Workers),
 		client:  http.Client{Timeout: deps.Config.ClientTimeout},
 		deps:    deps,
 		wg:      sync.WaitGroup{},
+		mu:      sync.Mutex{},
 	}
+	ctrl.cond = sync.NewCond(&ctrl.mu)
+	return ctrl
 }
 
-func (c *Controler) StartWorkers(ctx context.Context) {
+func (c *Controller) StartOrdersProcessor(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(c.deps.Config.ProcessorInterval) * time.Second)
+
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				orders, err := c.deps.Repo.GetUnprocessedOrders(ctx)
+				if err != nil {
+					c.deps.Logger.Sugar.Infow("error receiving unprocessed orders from database", "error", err)
+					continue
+				}
+				for _, order := range orders {
+					c.works <- order
+				}
+			case <-ctx.Done():
+				close(c.works)
+				return
+			}
+		}
+	}()
+}
+
+func (c *Controller) StartWorkers(ctx context.Context) {
+	c.wg.Add(c.deps.Config.Workers)
+
 	for i := 0; i < c.deps.Config.Workers; i++ {
 		go c.Worker(ctx, i)
-
 	}
 
 	go func() {
-
 		for {
 			select {
 			case result := <-c.results:
@@ -60,38 +91,44 @@ func (c *Controler) StartWorkers(ctx context.Context) {
 				return
 			}
 		}
-
 	}()
 }
 
-func (c *Controler) Worker(ctx context.Context, idx int) {
-	c.wg.Add(1)
+func (c *Controller) Worker(ctx context.Context, idx int) {
+	c.deps.Logger.Sugar.Infow("worker started", "worker index", idx)
+
 	defer c.wg.Done()
+
 	for {
 		select {
 		case work := <-c.works:
-			c.deps.Logger.Sugar.Infow("start work", "worker", idx)
+			select {
+			case <-c.wait:
+				c.cond.L.Lock()
+				c.deps.Logger.Sugar.Infoln("the worker paused", "worker index", idx)
+				c.cond.Wait()
+				c.deps.Logger.Sugar.Infoln("the worker unpaused", "worker index", idx)
+				c.cond.L.Unlock()
+			default:
+			}
+
+			c.deps.Logger.Sugar.Infow("the worker started performing the task", "worker index", idx, "task", work)
+
 			order, err := c.AccrualProcess(work)
-			result := Result{
+			c.results <- Result{
 				order: order,
 				err:   err,
 			}
-			c.results <- result
-			c.deps.Logger.Sugar.Infow("stop work", "worker", idx)
+
+			c.deps.Logger.Sugar.Infow("the worker completed the task", "worker index", idx)
 		case <-ctx.Done():
-			c.deps.Logger.Sugar.Infow("done work", "worker", idx)
+			c.deps.Logger.Sugar.Infow("the worker is stopped", "worker index", idx)
 			return
 		}
 	}
-
 }
 
-func (c *Controler) AddWork(order models.Order) {
-	c.deps.Logger.Sugar.Infoln("add work")
-	c.works <- order
-}
-
-func (c *Controler) AccrualProcess(order models.Order) (models.Order, error) {
+func (c *Controller) AccrualProcess(order models.Order) (models.Order, error) {
 	result := models.Order{}
 
 	req, err := http.NewRequest(http.MethodGet, c.deps.Config.Accrual+"/api/orders/"+strconv.FormatInt(order.Number, 10), nil)
@@ -107,9 +144,8 @@ func (c *Controler) AccrualProcess(order models.Order) (models.Order, error) {
 	}
 	defer resp.Body.Close()
 
-	contentType := resp.Header.Get("Content-type")
-
-	if strings.Contains(contentType, "application/json") {
+	switch resp.StatusCode {
+	case http.StatusOK:
 		var accrualResponse models.AccrualResponse
 		if err := json.NewDecoder(resp.Body).Decode(&accrualResponse); err != nil {
 			return result, err
@@ -125,18 +161,32 @@ func (c *Controler) AccrualProcess(order models.Order) (models.Order, error) {
 		result.Accrual = accrualResponse.Accrual
 		result.Status.Scan(accrualResponse.Status)
 
-	}
+	case http.StatusNoContent:
+		return result, apperr.ErrOrderIsNotRegisteredInAccrual
 
-	if strings.Contains(contentType, "text/plain") {
+	case http.StatusTooManyRequests:
 		retryAfter := resp.Header.Get("Retry-After")
-		print(retryAfter)
+
+		retry, err := strconv.Atoi(retryAfter)
+		if err != nil {
+			c.deps.Logger.Sugar.Infow("invalid timeout format", "error: ", err)
+			return result, err
+		}
+
+		go func() {
+			for i := 0; i < c.deps.Config.Workers; i++ {
+				c.wait <- struct{}{}
+			}
+			timer := time.NewTimer(time.Duration(retry) * time.Second)
+			<-timer.C
+			c.cond.Broadcast()
+		}()
+
+	case http.StatusInternalServerError:
+		return result, apperr.ErrInternalServerAccrualError
 	}
 
-	// body, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return err
-	// }
-	c.deps.Logger.Sugar.Infow("result", "status", result.Status)
+	c.deps.Logger.Sugar.Infow("response received from accrual service", "result", result, "status", result.Status.String())
 
 	return result, nil
 }

@@ -135,4 +135,16 @@ const (
 			accrual = orders.accrual + @accrual
 		WHERE user_id = @user_id;
 	`
+
+	SelectUnprocessedOrders = `
+		SELECT
+			id as number,
+			user_id,
+			status,
+			accrual::money::numeric::float8,
+			sum::money::numeric::float8,
+			date
+		FROM orders
+		WHERE status IN ('NEW', 'PROCESSING', 'REGISTERED')
+	`
 )
