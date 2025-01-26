@@ -70,9 +70,14 @@ func (c *Controller) StartOrdersProcessor(ctx context.Context) {
 func (c *Controller) StartWorkers(ctx context.Context) {
 	c.wg.Add(c.deps.Config.Workers)
 
+	wg := &sync.WaitGroup{}
+	wg.Add(c.deps.Config.Workers)
+
 	for i := 0; i < c.deps.Config.Workers; i++ {
-		go c.Worker(ctx, i)
+		go c.Worker(ctx, i, wg)
 	}
+
+	wg.Wait()
 
 	go func() {
 		for {
@@ -94,8 +99,10 @@ func (c *Controller) StartWorkers(ctx context.Context) {
 	}()
 }
 
-func (c *Controller) Worker(ctx context.Context, idx int) {
+func (c *Controller) Worker(ctx context.Context, idx int, wg *sync.WaitGroup) {
 	c.deps.Logger.Sugar.Infow("worker started", "worker index", idx)
+
+	wg.Done()
 
 	defer c.wg.Done()
 
