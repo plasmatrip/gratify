@@ -44,12 +44,10 @@ func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repositor
 		return nil, err
 	}
 
-	r := &Repository{
+	return &Repository{
 		db: db,
 		l:  l,
-	}
-
-	return r, nil
+	}, nil
 }
 
 //go:embed migrations/*.sql
