@@ -50,7 +50,7 @@ all_test:
             -gophermart-host=localhost \
             -gophermart-port=8080 \
             -gophermart-database-uri="postgres://gratify:password@localhost:5432/gratify?sslmode=disable" \
-            -accrual-binary-path=cmd/accrual/accrual_darwin_amd64 \
+            -accrual-binary-path=cmd/accrual/accrual_linux_amd64 \
             -accrual-host=localhost \
             -accrual-port=8082 \
             -accrual-database-uri="postgresql://postgres:postgres@postgres/praktikum?sslmode=disable"

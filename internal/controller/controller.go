@@ -121,7 +121,7 @@ func (c *Controller) Worker(ctx context.Context, idx int, wg *sync.WaitGroup) {
 
 			c.deps.Logger.Sugar.Infow("the worker started performing the task", "worker index", idx, "task", work)
 
-			order, err := c.AccrualProcess(work)
+			order, err := c.AccrualProcessor(work)
 			c.results <- Result{
 				order: order,
 				err:   err,
@@ -135,7 +135,7 @@ func (c *Controller) Worker(ctx context.Context, idx int, wg *sync.WaitGroup) {
 	}
 }
 
-func (c *Controller) AccrualProcess(order models.Order) (models.Order, error) {
+func (c *Controller) AccrualProcessor(order models.Order) (models.Order, error) {
 	result := models.Order{}
 
 	req, err := http.NewRequest(http.MethodGet, c.deps.Config.Accrual+"/api/orders/"+strconv.FormatInt(order.Number, 10), nil)
