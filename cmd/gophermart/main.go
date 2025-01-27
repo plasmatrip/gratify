@@ -49,8 +49,8 @@ func main() {
 	server := http.Server{
 		Addr: c.Host,
 		Handler: func(next http.Handler) http.Handler {
-			l.Sugar.Infow("The loyalty system \"Gophermart\" server is running. ", "Server address: ", c.Host)
-			l.Sugar.Infow("Server config", "DATABASE_URI", c.Database, "ACCRUAL_SYSTEM_ADDRESS", c.Accrual)
+			l.Sugar.Infow("The loyalty system \"Gophermart\" server is running. ", "Server address", c.Host)
+			l.Sugar.Infow("Server config", "Accrual system address", c.Accrual)
 			return next
 		}(router.NewRouter(*deps, ctrl)),
 	}

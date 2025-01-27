@@ -29,6 +29,16 @@ type Controller struct {
 	cond    *sync.Cond
 }
 
+// NewController returns a new instance of Controller.
+//
+// The Controller is responsible for processing orders in parallel. The number
+// of workers is determined by the Workers field in the deps.Config.
+//
+// The timeout is the maximum time the controller will wait for a response from
+// the accrual service when processing orders.
+//
+// The deps is a struct containing the dependencies required by the controller,
+// such as the repository and logger.
 func NewController(timeout time.Duration, deps deps.Dependencies) *Controller {
 	ctrl := &Controller{
 		works:   make(chan models.Order, deps.Config.WorkBuffer),
@@ -43,6 +53,9 @@ func NewController(timeout time.Duration, deps deps.Dependencies) *Controller {
 	return ctrl
 }
 
+// StartOrdersProcessor starts a goroutine that periodically gets unprocessed orders
+// from the database and adds them to the works channel. When the context is
+// canceled, the goroutine stops and the works channel is closed.
 func (c *Controller) StartOrdersProcessor(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(c.deps.Config.ProcessorInterval) * time.Second)
 
@@ -67,12 +80,25 @@ func (c *Controller) StartOrdersProcessor(ctx context.Context) {
 	}()
 }
 
+// StartWorkers initializes and starts a number of worker goroutines as defined
+// by the Workers field in the configuration. Each worker listens for tasks on
+// the works channel and processes them using the AccrualProcessor function.
+// The results of processing are sent to the results channel. This method also
+// starts a goroutine to listen for results, logging any errors and updating
+// the order status in the repository. The function blocks until all workers
+// have been started, and it waits for the context to be canceled before
+// shutting down gracefully.
 func (c *Controller) StartWorkers(ctx context.Context) {
 	c.wg.Add(c.deps.Config.Workers)
 
+	wg := &sync.WaitGroup{}
+	wg.Add(c.deps.Config.Workers)
+
 	for i := 0; i < c.deps.Config.Workers; i++ {
-		go c.Worker(ctx, i)
+		go c.Worker(ctx, i, wg)
 	}
+
+	wg.Wait()
 
 	go func() {
 		for {
@@ -94,8 +120,15 @@ func (c *Controller) StartWorkers(ctx context.Context) {
 	}()
 }
 
-func (c *Controller) Worker(ctx context.Context, idx int) {
+// Worker is a goroutine that processes tasks from the works channel. Each worker
+// listens for tasks and processes them using the AccrualProcessor function. The
+// results are sent to the results channel. If the worker receives a signal on the
+// wait channel, it pauses processing until it is signaled to continue. The worker
+// stops processing tasks and exits when the context is canceled.
+func (c *Controller) Worker(ctx context.Context, idx int, wg *sync.WaitGroup) {
 	c.deps.Logger.Sugar.Infow("worker started", "worker index", idx)
+
+	wg.Done()
 
 	defer c.wg.Done()
 
@@ -114,7 +147,7 @@ func (c *Controller) Worker(ctx context.Context, idx int) {
 
 			c.deps.Logger.Sugar.Infow("the worker started performing the task", "worker index", idx, "task", work)
 
-			order, err := c.AccrualProcess(work)
+			order, err := c.AccrualProcessor(work)
 			c.results <- Result{
 				order: order,
 				err:   err,
@@ -128,7 +161,13 @@ func (c *Controller) Worker(ctx context.Context, idx int) {
 	}
 }
 
-func (c *Controller) AccrualProcess(order models.Order) (models.Order, error) {
+// AccrualProcessor is a function that sends a request to the accrual service with the order number and
+// processes the response. The function returns the processed order and error. If the order is not
+// registered in the accrual system, the function returns ErrOrderIsNotRegisteredInAccrual. If the
+// accrual service returns an error, the function returns ErrInternalServerAccrualError. If the
+// accrual service returns a retry-after header, the function stops all workers until the time
+// specified in the header.
+func (c *Controller) AccrualProcessor(order models.Order) (models.Order, error) {
 	result := models.Order{}
 
 	req, err := http.NewRequest(http.MethodGet, c.deps.Config.Accrual+"/api/orders/"+strconv.FormatInt(order.Number, 10), nil)

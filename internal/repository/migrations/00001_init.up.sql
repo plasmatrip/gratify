@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 	PRIMARY KEY (id)
 );
 
-CREATE INDEX IF NOT EXISTS accounts_user_id ON orders (user_id);
+CREATE INDEX IF NOT EXISTS accounts_user_id ON accounts (user_id);
 
 ALTER TABLE Orders ADD CONSTRAINT Orders_fk0 FOREIGN KEY (user_id) REFERENCES Users(id);
 ALTER TABLE Accounts ADD CONSTRAINT Accounts_fk1 FOREIGN KEY (user_id) REFERENCES Users(id);

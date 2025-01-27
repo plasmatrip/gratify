@@ -44,12 +44,10 @@ func NewRepository(ctx context.Context, dsn string, l logger.Logger) (*Repositor
 		return nil, err
 	}
 
-	r := &Repository{
+	return &Repository{
 		db: db,
 		l:  l,
-	}
-
-	return r, nil
+	}, nil
 }
 
 //go:embed migrations/*.sql
@@ -221,7 +219,7 @@ func (r Repository) GetBalance(ctx context.Context, userID int32) (float32, erro
 
 func (r Repository) Withdraw(ctx context.Context, order models.Order) error {
 	// начинаем транзакцию
-	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: pgx.ReadWrite})
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable, AccessMode: pgx.ReadWrite})
 	if err != nil {
 		return err
 	}
@@ -290,7 +288,7 @@ func (r Repository) UpdateOrder(ctx context.Context, order models.Order) error {
 	// обновляем статус заказа, если пришел Processed
 	if order.Status == models.StatusProcessed {
 		// начинаем транзакцию
-		tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: pgx.ReadWrite})
+		tx, err := r.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable, AccessMode: pgx.ReadWrite})
 		if err != nil {
 			return err
 		}

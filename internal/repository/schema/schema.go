@@ -64,7 +64,8 @@ const (
 			date
 		FROM orders
 	 	WHERE user_id = @user_id AND sum::money::numeric = 0 AND status IN ('NEW', 'PROCESSING', 'PROCESSED' ,'INVALID')
-		ORDER BY date DESC;
+		ORDER BY date DESC
+		FOR UPDATE;
 	`
 
 	InsertOrder = `
@@ -75,12 +76,13 @@ const (
 	SelectOrderFromAnotherUser = `
 		SELECT * 
 		FROM orders 
-		WHERE id = @id AND user_id <> @user_id;
+		WHERE id = @id AND user_id <> @user_id
+		FOR UPDATE;
 	`
 
 	SelectUserBalanceWithdrawn = `
 		SELECT 
-			a.amount::money::numeric  as current,
+			a.amount::money::numeric as current,
 			sum(b.sum)::money::numeric as withdrawn 
 		FROM accounts a LEFT JOIN orders b USING (user_id)
 		WHERE a.user_id = @user_id AND b.user_id = @user_id
@@ -90,7 +92,8 @@ const (
 	SelectUserBalance = `
 		SELECT amount::money::numeric as current
 		FROM accounts
-		WHERE user_id = @user_id;
+		WHERE user_id = @user_id
+		FOR UPDATE;
 	`
 
 	InsertOrderWithdraw = `
@@ -111,7 +114,8 @@ const (
 			date as processed_at
 		FROM orders
 		WHERE user_id = @user_id AND sum::money::numeric > 0
-		ORDER BY date DESC;
+		ORDER BY date DESC
+		FOR UPDATE;
 	`
 
 	UpdateOrderStatus = `
@@ -146,5 +150,6 @@ const (
 			date
 		FROM orders
 		WHERE status IN ('NEW', 'PROCESSING', 'REGISTERED')
+		FOR UPDATE;
 	`
 )
